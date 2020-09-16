@@ -1,0 +1,83 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> Graph, cenTree;
+vector<int> par, sz, height;
+vector<bool> visited, centroidMarked;
+vector<char> ans;
+
+int dfs1(int v, int depth, int parent)
+{
+  int curr = 1;
+  visited[v] = true;
+  par[v] = parent;
+  for (auto vv : Graph[v])
+    if (!visited[vv])
+      curr += dfs1(vv, depth + 1, v);
+  return sz[v] = curr;
+}
+
+int dfs2(int v, int parent)
+{
+  int curr = 1;
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv] && vv != parent)
+      curr += dfs2(vv, v);
+  return sz[v] = curr;
+}
+
+void dfs3(int v, int depth)
+{
+  visited[v] = true;
+  ans[v] = 'A' + depth;
+  for (auto vv : cenTree[v])
+    if (!visited[vv])
+      dfs3(vv, depth + 1);
+}
+
+int getCentroid(int v, int parent, int subTreeSize)
+{
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv] && vv != parent && sz[vv] > subTreeSize / 2)
+      return getCentroid(vv, v, subTreeSize);
+  return v;
+}
+
+int decompose(int v, int n, int subTreeSize)
+{
+  int centroid = getCentroid(v, -1, subTreeSize);
+  centroidMarked[centroid] = true;
+  for (auto vv : Graph[centroid])
+    if (!centroidMarked[vv])
+    {
+      int newSubTreeSize = dfs2(vv, v); // building sz array according to the subtree - getting its size
+      int childCentroid = decompose(vv, n, newSubTreeSize);
+      cenTree[centroid].push_back(childCentroid);
+      cenTree[childCentroid].push_back(centroid);
+    }
+  return centroid;
+}
+
+int main()
+{
+  ios_base::sync_with_stdio(false);
+  cin.tie(0);
+  cout.tie(0);
+
+  int n, u, v;
+  cin >> n;
+  Graph.resize(n + 5), cenTree.resize(n + 5), par.resize(n + 5), sz.resize(n + 5), visited.resize(n + 5), centroidMarked.resize(n + 5), ans.resize(n + 5);
+  for (int i = 0; i < n - 1; ++i)
+  {
+    cin >> u >> v;
+    Graph[u].push_back(v);
+    Graph[v].push_back(u);
+  }
+  dfs1(1, 0, 0);
+  int cenTreeRoot = decompose(1, n, n);
+  visited.clear();
+  visited.resize(n + 5);
+  dfs3(cenTreeRoot, 0);
+  for (int i = 1; i <= n; ++i)
+    cout << ans[i] << " ";
+}
