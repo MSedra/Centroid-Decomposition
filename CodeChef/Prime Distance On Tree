@@ -1,0 +1,163 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+#define fn(x) return cout << x << endl, 0
+#define prs(x) cout << x << " "
+#define prl(x) cout << x << endl
+#define pr(x) cout << x
+#define pi 3.14159265358979323846264338327950
+
+typedef long long ll;
+ll MOD = (ll)1000000007;
+
+vector<vector<int>> Graph, up;
+vector<int> par, sz, height, vec, depths, primes;
+vector<bool> visited, centroidMarked, isPrime;
+int l;
+ll ans = 0;
+
+int dfs1(int v, int depth, int parent)
+{
+  int curr = 1;
+  visited[v] = true;
+  par[v] = parent;
+  height[v] = depth;
+  for (auto vv : Graph[v])
+    if (!visited[vv])
+      curr += dfs1(vv, depth + 1, v);
+  return sz[v] = curr;
+}
+
+void preUp(int n)
+{
+  for (int i = 1; i <= n; ++i)
+    up[i][0] = par[i];
+  for (int j = 1; j <= l; ++j)
+    for (int i = 1; i <= n; ++i)
+      if (up[i][j - 1])
+        up[i][j] = up[up[i][j - 1]][j - 1];
+}
+
+int LCA(int x, int y)
+{
+  if (height[y] > height[x])
+    swap(x, y);
+  for (int j = l; j >= 0; --j)
+    if (up[x][j] && height[up[x][j]] >= height[y])
+      x = up[x][j];
+  if (x == y)
+    return x;
+  for (int j = l; j >= 0; --j)
+    if (up[x][j] != up[y][j])
+    {
+      x = up[x][j];
+      y = up[y][j];
+    }
+  return up[x][0];
+}
+
+int dist(int u, int v)
+{
+  return height[u] + height[v] - 2 * height[LCA(u, v)];
+}
+
+int dfs2(int v, int parent, int depth)
+{
+  int curr = 1;
+  ++depths[depth];
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv] && vv != parent)
+      curr += dfs2(vv, v, depth + 1);
+  return sz[v] = curr;
+}
+
+void add(int v, int parent, int depth, int sign)
+{
+  depths[depth] += sign;
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv] && vv != parent)
+      add(vv, v, depth + 1, sign);
+}
+
+int getCentroid(int v, int parent, int subTreeSize)
+{
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv] && vv != parent && sz[vv] > subTreeSize / 2)
+      return getCentroid(vv, v, subTreeSize);
+  return v;
+}
+
+void solve(int v, int parent, int cen, int subTreeSize)
+{
+  int dis = dist(v, cen);
+  for (auto p : primes)
+    if (dis < p && p - dis < subTreeSize)
+      ans += depths[p - dis];
+    else if (dis == p)
+      ans += 2;
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv] && vv != parent)
+      solve(vv, v, cen, subTreeSize);
+}
+
+void decompose(int v, int n, int subTreeSize)
+{
+  int centroid = getCentroid(v, -1, subTreeSize), i = vec.size();
+  centroidMarked[centroid] = true;
+  depths.clear(), depths.resize(subTreeSize + 5);
+  for (auto vv : Graph[centroid])
+    if (!centroidMarked[vv])
+    {
+      int newSubTreeSize = dfs2(vv, centroid, 1);
+      vec.push_back(newSubTreeSize);
+    }
+  for (auto vv : Graph[centroid])
+    if (!centroidMarked[vv])
+    {
+      add(vv, centroid, 1, -1);
+      solve(vv, centroid, centroid, subTreeSize);
+      add(vv, centroid, 1, 1);
+    }
+  for (auto vv : Graph[centroid])
+    if (!centroidMarked[vv])
+      decompose(vv, n, vec[i++]);
+}
+
+void getPrimes(int n)
+{
+  isPrime.resize(n + 5, true);
+  for (int i = 2; i <= n; ++i)
+    if (isPrime[i])
+    {
+      primes.push_back(i);
+      for (ll j = (ll)i * i; j <= n; j += i)
+        isPrime[j] = false;
+    }
+}
+
+int main()
+{
+  ios_base::sync_with_stdio(false);
+  cin.tie(0);
+  cout.tie(0);
+
+  int n, u, v, mul = 2;
+  l = 1;
+  cin >> n;
+  while (mul * 2 < n)
+    mul *= 2, ++l;
+  ++l;
+  Graph.resize(n + 5), par.resize(n + 5), sz.resize(n + 5), visited.resize(n + 5), centroidMarked.resize(n + 5), up.resize(n + 5, vector<int>(l + 5)), height.resize(n + 5);
+  for (int i = 0; i < n - 1; ++i)
+  {
+    cin >> u >> v;
+    Graph[u].push_back(v);
+    Graph[v].push_back(u);
+  }
+  getPrimes(n);
+  dfs1(1, 0, 0);
+  preUp(n);
+  decompose(1, n, n);
+  cout << fixed << setprecision(10);
+  cout << (double)ans / ((ll)n * (n - 1));
+}
