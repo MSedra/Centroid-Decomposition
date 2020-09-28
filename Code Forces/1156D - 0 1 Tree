@@ -1,0 +1,123 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+#define fn(x) return cout << x << endl, 0
+#define prs(x) cout << x << " "
+#define prl(x) cout << x << endl
+#define pr(x) cout << x
+#define pi 3.14159265358979323846264338327950
+
+typedef long long ll;
+ll MOD = (ll)1000000007;
+ll ans = 0, zzo, o;
+
+vector<vector<pair<int, char>>> Graph;
+vector<int> sz, vec;
+vector<bool> visited, centroidMarked;
+
+int dfs1(int v, int depth, int parent) // building wanted arrays for the original tree --- height array is wanted for the LCA
+{
+  int curr = 1;
+  visited[v] = true;
+  for (auto vv : Graph[v])
+    if (!visited[vv.first])
+      curr += dfs1(vv.first, depth + 1, v);
+  return sz[v] = curr;
+}
+
+int dfs2(int v, int parent, char last, char first, bool ok) // building the size array according to the current subTree assuming that the centroid is the root
+{
+  if (ok)
+  {
+    if (first == '1')
+      ++o;
+    else
+      ++zzo;
+  }
+  int curr = 1;
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv.first] && vv.first != parent)
+    {
+      bool bol = ok;
+      if ((last == '1' && vv.second == '0'))
+        bol = false;
+      curr += dfs2(vv.first, v, vv.second, first, bol);
+    }
+  return sz[v] = curr;
+}
+
+int getCentroid(int v, int parent, int subTreeSize) // moving in a unique path to reach the centroid of the subTree
+{
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv.first] && vv.first != parent && sz[vv.first] > subTreeSize / 2)
+      return getCentroid(vv.first, v, subTreeSize);
+  return v;
+}
+
+void add(int v, int parent, int sign, char last, char first)
+{
+  if (first == '1')
+    o += sign;
+  else
+    zzo += sign;
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv.first] && vv.first != parent && !(last == '1' && vv.second == '0'))
+      add(vv.first, v, sign, vv.second, first);
+}
+
+void solve(int v, int parent, char last, char first)
+{
+  if (first == '0')
+    ans += (o + zzo);
+  else
+    ans += o;
+  ++ans;
+  for (auto vv : Graph[v])
+    if (!centroidMarked[vv.first] && vv.first != parent && !(last == '0' && vv.second == '1'))
+      solve(vv.first, v, vv.second, first);
+}
+
+void decompose(int v, int n, int subTreeSize)
+{
+  int centroid = getCentroid(v, -1, subTreeSize), i = vec.size();
+  centroidMarked[centroid] = true;
+  zzo = o = 0;
+  for (auto vv : Graph[centroid])
+    if (!centroidMarked[vv.first])
+    {
+      int newSubTreeSize = dfs2(vv.first, centroid, vv.second, vv.second, true); // building sz array according to the subtree - getting its size
+      vec.push_back(newSubTreeSize);
+    }
+  ans += (zzo + o);
+  for (auto vv : Graph[centroid])
+    if (!centroidMarked[vv.first])
+    {
+      add(vv.first, centroid, -1, vv.second, vv.second);
+      solve(vv.first, centroid, vv.second, vv.second);
+      add(vv.first, centroid, 1, vv.second, vv.second);
+    }
+  for (auto vv : Graph[centroid])
+    if (!centroidMarked[vv.first])
+      decompose(vv.first, n, vec[i++]);
+}
+
+int main()
+{
+  ios_base::sync_with_stdio(false);
+  cin.tie(0);
+  cout.tie(0);
+
+  int n, u, v;
+  char c;
+  cin >> n;
+  Graph.resize(n + 5), sz.resize(n + 5), visited.resize(n + 5), centroidMarked.resize(n + 5);
+  for (int i = 0; i < n - 1; ++i)
+  {
+    cin >> u >> v >> c;
+    Graph[u].push_back({v, c});
+    Graph[v].push_back({u, c});
+  }
+  dfs1(1, 0, 0);
+  decompose(1, n, n);
+  cout << ans;
+}
